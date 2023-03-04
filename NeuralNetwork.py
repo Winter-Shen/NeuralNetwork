@@ -7,14 +7,9 @@ def forward0(x, w, b):
     v=w*x+b
     return(sigmoid(v))
 
-def forward(x, l):
+def generatePar(l,x):
     w_list = []
     b_list = []
-    y_list = []
-
-    x = np.matrix(x).T
-    y_list.append(x)
-
     for i, j in enumerate(l):
         if i:
             w = np.ones((j, l[i-1]))
@@ -23,13 +18,20 @@ def forward(x, l):
         w_list.append(np.matrix(w))
 
         b = np.ones(j)
-        b_list.append(np.matrix(b))
+        b_list.append(np.matrix(b).T)
+    return([w_list, b_list])
 
-        x = forward0(x, np.matrix(w), np.matrix(b).T)
+def forward(x, l, w_list, b_list): 
+    y_list = []
+
+    x = np.matrix(x).T
+    y_list.append(x)
+
+    for i, j in enumerate(l):
+        x = forward0(x, w_list[i], b_list[i])
         y_list.append(x)
 
-    #y = x[0, 0]
-    return([y_list, w_list, b_list])
+    return(y_list)
 
 def backwards0(gradientYL, x, y_hat, w):
     jacobianVY = np.multiply(y_hat, (1-y_hat))
@@ -40,16 +42,31 @@ def backwards0(gradientYL, x, y_hat, w):
     gradientBL = gradientVL
     return([gradientXL, gradientWL, gradientBL])
 
-def backwards1(y, net, l, eta):
-    w_list=[]
-    gradientYL = 2*(y - net[0][len(l)])
+def backwards1(y, value, l, eta, w_list, b_List):
+    updatedW_list=[]
+    updatedB_list=[]
+    gradientYL = 2*(y - value[len(l)])
     for ll in range(len(l)-1,-1,-1):
-        x0 = net[0][ll]
-        y_hat = net[0][ll+1]
-        w=net[1][ll]
-        L = nn.backwards0(gradientYL, x0, y_hat, w)
+        x0 = value[ll]
+        y_hat = value[ll+1]
+        w = w_list[ll]
+        b = b_List[ll]
+        
+        L = backwards0(gradientYL, x0, y_hat, w)
+
         gradientYL = L[0]
         w = w - eta*L[1]
-        w_list.append(w)
-    return(w_list)
+        updatedW_list.append(w)
+        b = b - eta*L[2]
+        updatedB_list.append(b)
+    return([updatedW_list, updatedB_list])
+
+def trainNet(x, y, l):
+    [w_list, b_list] = generatePar(l, x)
+    for i in range(10):
+        values = forward(x, l, w_list, b_list)
+        [w_list, b_list] = backwards1(y, values, l, 0.5, w_list, b_list)
+        w_list = list(reversed(w_list))
+        b_list = list(reversed(b_list))
+    return([w_list, b_list])
 
