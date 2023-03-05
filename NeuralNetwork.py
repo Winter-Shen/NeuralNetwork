@@ -3,6 +3,7 @@ import numpy as np
 def sigmoid(x):
     return(np.exp(x)/(1+np.exp(x)))
 
+#one layer
 def forward0(x, w, b):
     v=w*x+b
     return(sigmoid(v))
@@ -21,6 +22,7 @@ def generatePar(l,x):
         b_list.append(np.matrix(b).T)
     return([w_list, b_list])
 
+
 def forward(x, l, w_list, b_list): 
     y_list = []
 
@@ -33,7 +35,9 @@ def forward(x, l, w_list, b_list):
 
     return(y_list)
 
-def backwards0(gradientYL, x, y_hat, w):
+#one layer
+def backward0(gradientYL, x, y_hat, w):
+    #derivates of sigmoid
     jacobianVY = np.multiply(y_hat, (1-y_hat))
     gradientVL = np.multiply(jacobianVY,gradientYL)
     gradientUL = gradientVL
@@ -42,7 +46,7 @@ def backwards0(gradientYL, x, y_hat, w):
     gradientBL = gradientVL
     return([gradientXL, gradientWL, gradientBL])
 
-def backwards1(y, value, l, eta, w_list, b_List):
+def backward(y, value, l, eta, w_list, b_List):
     updatedW_list=[]
     updatedB_list=[]
     gradientYL = 2*(y - value[len(l)])
@@ -52,7 +56,7 @@ def backwards1(y, value, l, eta, w_list, b_List):
         w = w_list[ll]
         b = b_List[ll]
         
-        L = backwards0(gradientYL, x0, y_hat, w)
+        L = backward0(gradientYL, x0, y_hat, w)
 
         gradientYL = L[0]
         w = w - eta*L[1]
@@ -65,7 +69,7 @@ def trainNet(x, y, l):
     [w_list, b_list] = generatePar(l, x)
     for i in range(10):
         values = forward(x, l, w_list, b_list)
-        [w_list, b_list] = backwards1(y, values, l, 0.5, w_list, b_list)
+        [w_list, b_list] = backward(y, values, l, 0.5, w_list, b_list)
         w_list = list(reversed(w_list))
         b_list = list(reversed(b_list))
     return([w_list, b_list])
