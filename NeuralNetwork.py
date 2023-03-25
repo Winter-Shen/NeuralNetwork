@@ -1,5 +1,5 @@
-from tensorflow import keras
 import numpy as np
+from tensorflow.keras.losses import MeanSquaredError
 
 class InputLayer:
     def __init__(self, dim):
@@ -20,12 +20,13 @@ class InputLayer:
     def output(self):
         return self.Y
 class Layer:
-    def __init__(self, inDim, outDim, learning_rate):
+    def __init__(self, inDim, outDim):
         self.inDim = inDim
         self.outDim = outDim
-        self.learning_rate = learning_rate
         self.livelyNode = list(range(outDim))
-    def initializeWeight(self, weight):
+    def initializeWeight(self, initializer):
+        return self.setWeight(initializer((self.inDim, self.outDim)).numpy())
+    def setWeight(self, weight):
         if(weight.shape[0] != self.inDim or weight.shape[1]!= self.outDim):
             return None
         else:
@@ -52,10 +53,10 @@ class Layer:
         else:
             self.dy = dy
             return self
-    def backwardPropogation(self,s):
+    def backwardPropogation(self,learning_rate):
         self.dw = self.X.T.dot(self.dy)
         self.dx = self.dy.dot(self.weight.T)
-        self.weight = self.weight - self.learning_rate * self.dw
+        self.weight = self.weight - learning_rate * self.dw
         return self
     def getDx(self):
         return self.dx
@@ -73,19 +74,19 @@ class model:
         else:
             self.n += 1
         return self
-    def fit0(self, X, Y):
-        self.size = X.shape[0]
+    def fit0(self, X, Y, learning_rate):
 
         y = self.forwardPropogation(X)
-        r = Y-y
-        print(r.T.dot(r)/self.size)
 
-        dy = 2*r/self.size
-        self.i = self.i-1
-        while(self.i < 1):
-            dy = self.layers[self.i].setDy(dy).backwardPropogation(4).getDx()
+        mse = MeanSquaredError()
+        print(mse(Y, y).numpy())
+        r = Y-y
+
+        dy = 2*r/((r.shape[0])*(r.shape[1]))
+        self.i = self.n-1
+        while(self.i >= 1):
+            dy = self.layers[self.i].setDy(dy).backwardPropogation(learning_rate).getDx()
             self.i = self.i-1
-        self.i = 1
 
     def predict(self, X_prediction):
         return self.forwardPropogation(X_prediction)
@@ -93,6 +94,7 @@ class model:
         
     def forwardPropogation(self, X):
         y = self.layers[0].input(X).forwardPropogation().output()
+        self.i = 1
         while(self.i < self.n):
             y = self.layers[self.i].input(y).forwardPropogation().output()
             self.i = self.i+1
