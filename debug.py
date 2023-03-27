@@ -57,4 +57,4 @@ m2.layers[2].set_weights([w3])
 m2.fit(X_train, y_train, epochs=1)
 
 y_hat = m2.predict(X_test)
-#print(y_hat)
+print(y_hat)
