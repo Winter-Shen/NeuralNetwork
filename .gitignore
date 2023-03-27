@@ -1,4 +1,5 @@
 __pycache__/
 .ipynb_checkpoints/
 .vscode/
+.vs/
 mnist-deep-neural-network-with-keras.ipynb
