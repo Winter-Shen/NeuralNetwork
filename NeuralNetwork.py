@@ -47,6 +47,7 @@ class MyLayer:
             self.size = data.shape[0]
             return self
     def forwardPropogation(self):
+        #print(self.weight[np.transpose([self.livelyRow]),self.livelyCol])
         self.Y = self.X.dot(self.weight[np.transpose([self.livelyRow]),self.livelyCol])
         return self
     def output(self):
@@ -61,6 +62,10 @@ class MyLayer:
         livelyRow = np.transpose([self.livelyRow])
         self.dw = self.X.T.dot(self.dy)
         self.dx = self.dy.dot(self.weight[livelyRow,self.livelyCol].T)
+
+        print(self.weight[livelyRow,self.livelyCol])
+        print(learning_rate * self.dw)
+
         self.weight[livelyRow,self.livelyCol] = self.weight[livelyRow,self.livelyCol] - learning_rate * self.dw
         return self
     def getDx(self):
