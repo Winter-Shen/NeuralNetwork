@@ -32,26 +32,32 @@ class MyLayer:
         if(weight.shape[0] != self.inDim or weight.shape[1]!= self.outDim):
             return None
         else:
-            self.weight = weight
+            self.weight = weight.astype(np.float64)
             return self
-    def activeNode(self, livelyRow, livelyCol):
+    def activeNode(self, livelyRow, livelyCol, prob):
+        '''
         self.livelyCol = livelyCol
         self.livelyRow = livelyRow
         self.inDim = len(livelyRow)
         self.outDim = len(livelyCol)
+        '''
+        r = np.random.rand(self.inDim, self.outDim)
+        r = r < prob
+        self.prob = prob
+        self.r = r
     def input(self, data):
         if(data.shape[1] != self.inDim):
             return None
         else:
-            self.X = data
+            self.X = data.astype(np.float64)
             self.size = data.shape[0]
             return self
     def forwardPropogation(self):
-        #print(self.weight[np.transpose([self.livelyRow]),self.livelyCol])
-        self.Y = self.X.dot(self.weight[np.transpose([self.livelyRow]),self.livelyCol])
+        #self.Y = self.X.dot(self.weight[np.transpose([self.livelyRow]),self.livelyCol])
+        self.Y = self.X.dot(self.weight)
         return self
     def output(self):
-        return self.Y
+        return (self.Y*self.r)/prob
     def setDy(self, dy):
         if(dy.shape[0] != self.size or dy.shape[1]!= self.outDim):
             return None
@@ -59,13 +65,10 @@ class MyLayer:
             self.dy = dy
             return self
     def backwardPropogation(self,learning_rate):
-        livelyRow = np.transpose([self.livelyRow])
+        #livelyRow = np.transpose([self.livelyRow])
         self.dw = self.X.T.dot(self.dy)
+        #self.dx = self.dy.dot(self.weight[livelyRow,self.livelyCol].T)
         self.dx = self.dy.dot(self.weight[livelyRow,self.livelyCol].T)
-
-        print(self.weight[livelyRow,self.livelyCol])
-        print(learning_rate * self.dw)
-
         self.weight[livelyRow,self.livelyCol] = self.weight[livelyRow,self.livelyCol] - learning_rate * self.dw
         return self
     def getDx(self):
