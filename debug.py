@@ -1,11 +1,11 @@
 import NeuralNetwork as nn
 import numpy as np
 
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.losses import MeanSquaredError
-from tensorflow.keras.initializers import RandomNormal
-from tensorflow.keras.optimizers import SGD
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.losses import MeanSquaredError
+from keras.initializers import RandomNormal
+from keras.optimizers import SGD
 
 X_train = np.array([[1,2,3],[4,5,6],[7,8,9],[10,11,12]])
 y_train = np.array([[23,24], [25,26],[27,28],[29,30]])
@@ -22,7 +22,7 @@ initializer = RandomNormal(mean=0., stddev=1., seed = 12345)
 m1 = nn.MyModel()
 m1.addLayer(nn.InputLayer(3))
 
-m1.addLayer(nn.MyLayer(3, 4).setWeight(w1))
+m1.addLayer(nn.MyLayer(3, 4).setWeight(w1).activeNode(0.45))
 m1.addLayer(nn.MyLayer(4, 5).setWeight(w2))
 m1.addLayer(nn.MyLayer(5, 2).setWeight(w3))
 
