@@ -1,6 +1,7 @@
 import numpy as np
 from keras.losses import MeanSquaredError
 from keras.metrics import CategoricalAccuracy
+from tqdm import tqdm
 
 class InputLayer:
     def __init__(self, dim):
@@ -97,11 +98,18 @@ class MyModel:
     def fit(self, X, Y, learning_rate, epoches, batch_size):
 
         batches = self.getBatches(X, batch_size)
-
+        '''
+        l = len(batches)
+        for i in range(epoches):
+            for batch in tqdm(range(l), dynamic_ncols=True):
+                [loss, accuracy] = self.fit0(batches[batch], Y, learning_rate)
+                print("Epoch %2d: loss: %.3f - accuracy: %.3f" % (i+1, loss, accuracy))
+        '''
         for i in range(epoches):
             for batch in batches:
-                [loss, accuracy] = self.fit0(X, Y, learning_rate)
+                [loss, accuracy] = self.fit0(batch, Y, learning_rate)
                 print("Epoch %2d: loss: %.3f - accuracy: %.3f" % (i+1, loss, accuracy))
+
     def predict(self, X_prediction):
         return self.forwardPropogation(X_prediction)
     def forwardPropogation(self, X):

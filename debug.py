@@ -27,7 +27,7 @@ m1.addLayer(nn.MyLayer(4, 5).setWeight(w2))
 m1.addLayer(nn.MyLayer(5, 2).setWeight(w3))
 
 #m.selectNodes([[1,3],[0,2,4]])
-m1.fit(X_train, y_train, 0.1, epochs=1)
+m1.fit(X_train, y_train, 0.1, epoches=1, batch_size = 1)
 
 y_hat = m1.predict(X_test)
 print(y_hat)
