@@ -23,7 +23,7 @@ class MyLayer:
     def __init__(self, inDim, outDim):
         self.inDim = inDim
         self.outDim = outDim
-        self.prob = 1.1
+        self.r = np.ones(outDim)
         self.initializeWeight(GlorotUniform())
     def initializeWeight(self, initializer):
         return self.setWeight(initializer((self.inDim, self.outDim)).numpy())
@@ -35,6 +35,16 @@ class MyLayer:
             return self
     def activeNode(self, prob):
         self.prob = prob
+        r = np.random.rand(self.outDim)
+        #r = np.random.rand(self.size, self.outDim)
+        r = r < prob
+        self.r = r
+        return self
+    def dropout(self, prob):
+        self.prob = prob
+        return self
+    def setR(self, r):
+        self.r = r < self.prob
         return self
     def input(self, data):
         if(data.shape[1] != self.inDim):
@@ -43,21 +53,17 @@ class MyLayer:
             self.X = data.astype(np.float64)
             self.size = data.shape[0]
 
-            r = np.random.rand(self.size, self.outDim)
-            r = r < self.prob
-            self.r = r
-
             return self
     def forwardPropogation(self):
         self.Y = self.X.dot(self.weight)
         return self
     def output(self):
-        return (self.Y*self.r)/self.prob
+        return (self.Y*self.r)#/self.prob
     def setDy(self, dy):
         if(dy.shape[0] != self.size or dy.shape[1]!= self.outDim):
             return None
         else:
-            self.dy = (dy * self.r)/self.prob
+            self.dy = (dy * self.r)#/self.prob
             return self
     def backwardPropogation(self,learning_rate):
         self.dw = self.X.T.dot(self.dy)
@@ -79,12 +85,13 @@ class MyModel:
         else:
             self.n += 1
         return self
-    def fit0(self, X, Y, learning_rate):
-        y = self.forwardPropogation(X)
+    def fit0(self, X, Y, learning_rate, r):
+
+
+        y = self.forwardPropogation(X, r)
 
         mse = MeanSquaredError()
         metrics = CategoricalAccuracy()
-        metrics.update_state(Y, y)
         r = y-Y
 
         dy = 2*r/((r.shape[0])*(r.shape[1]))
@@ -93,26 +100,37 @@ class MyModel:
         while(i >= 1):
             dy = self.layers[i].setDy(dy).backwardPropogation(learning_rate).getDx()
             i = i-1
+
+        y = self.predict(X)
+        metrics.update_state(Y, y)
         return([mse(Y, y).numpy(), metrics.result().numpy()])
     def fit(self, X, Y, learning_rate, epoches, batch_size):
         batches = self.getBatches(X, Y, batch_size)
         batch_number = X.shape[0]//batch_size + 1
+        self.batch_number = batch_number
+
+        r = [np.random.rand(batch_number, self.layers[k].outDim) for k in range(1, self.n)]
 
         l = len(batches)
         for i in range(epoches):
-            batchesP = tqdm(range(l), ascii ="---------|", bar_format="{l_bar}{bar:30}")
+            batchesP = tqdm(range(l), bar_format="{l_bar}")
             for j in batchesP:
-                [loss, accuracy] = self.fit0(batches[j][0], batches[j][1], learning_rate)
-                batchesP.set_description("%d/%d: %.3f" % (j+1, batch_number, accuracy))  
+                
+                [loss, accuracy] = self.fit0(batches[j][0], batches[j][1], learning_rate, [r[k][j]  for k in range(0, self.n-1)])
+                batchesP.set_description("Epoch %2d: %3d/%3d; Accuracy %.3f" % (i+1, j+1, batch_number, accuracy))  
     def predict(self, X_prediction):
-        return self.forwardPropogation(X_prediction)
-    def forwardPropogation(self, X):
+        r = [np.zeros((self.layers[k].outDim)) for k in range(1, self.n)]
+        return self.forwardPropogation(X_prediction, r)
+    def forwardPropogation(self, X, r):
+        #print(len(r))
         y = self.layers[0].input(X).forwardPropogation().output()
         i = 1
         while(i < self.n):
-            y = self.layers[i].input(y).forwardPropogation().output()
+            y = self.layers[i].setR(r[i-1]).input(y).forwardPropogation().output()
             i = i+1
         return y
     def getBatches(self, X, Y, batch_size):
-        batches = [(X[i:i + batch_size], Y[i:i + batch_size]) for i in range(0, len(X), batch_size)]
+        indices = np.arange(len(X))
+        np.random.shuffle(indices)
+        batches = [(X[indices[i:i+batch_size]], Y[indices[i:i+batch_size]]) for i in range(0, len(X), batch_size)]
         return batches
