@@ -35,7 +35,7 @@ print(y_hat)
 '''
 Keras Network
 '''
-
+'''
 X_train = np.array([[1,2,3],[4,5,6],[7,8,9],[10,11,12]])
 y_train = np.array([[23,24], [25,26],[27,28],[29,30]])
 X_test = np.array([[13,14,15]])
@@ -58,3 +58,4 @@ m2.fit(X_train, y_train, epochs=1)
 
 y_hat = m2.predict(X_test)
 print(y_hat)
+'''

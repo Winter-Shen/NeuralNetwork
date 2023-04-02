@@ -2,14 +2,12 @@ import numpy as np
 from keras.losses import MeanSquaredError
 from keras.metrics import CategoricalAccuracy
 from tqdm import tqdm
+from keras.initializers import GlorotUniform
 
 class InputLayer:
     def __init__(self, dim):
         self.dim = dim
         self.livelyNode = list(range(dim))
-    def activeNode(self, nodeIndex):
-        self.livelyNode = nodeIndex
-        return self
     def input(self, data):
         if(data.shape[1] != self.dim):
             return None
@@ -26,6 +24,7 @@ class MyLayer:
         self.inDim = inDim
         self.outDim = outDim
         self.prob = 1.1
+        self.initializeWeight(GlorotUniform())
     def initializeWeight(self, initializer):
         return self.setWeight(initializer((self.inDim, self.outDim)).numpy())
     def setWeight(self, weight):
@@ -96,20 +95,15 @@ class MyModel:
             i = i-1
         return([mse(Y, y).numpy(), metrics.result().numpy()])
     def fit(self, X, Y, learning_rate, epoches, batch_size):
+        batches = self.getBatches(X, Y, batch_size)
+        batch_number = X.shape[0]//batch_size + 1
 
-        batches = self.getBatches(X, batch_size)
-        '''
         l = len(batches)
         for i in range(epoches):
-            for batch in tqdm(range(l), dynamic_ncols=True):
-                [loss, accuracy] = self.fit0(batches[batch], Y, learning_rate)
-                print("Epoch %2d: loss: %.3f - accuracy: %.3f" % (i+1, loss, accuracy))
-        '''
-        for i in range(epoches):
-            for batch in batches:
-                [loss, accuracy] = self.fit0(batch, Y, learning_rate)
-                print("Epoch %2d: loss: %.3f - accuracy: %.3f" % (i+1, loss, accuracy))
-
+            batchesP = tqdm(range(l), ascii ="---------|", bar_format="{l_bar}{bar:30}")
+            for j in batchesP:
+                [loss, accuracy] = self.fit0(batches[j][0], batches[j][1], learning_rate)
+                batchesP.set_description("%d/%d: %.3f" % (j+1, batch_number, accuracy))  
     def predict(self, X_prediction):
         return self.forwardPropogation(X_prediction)
     def forwardPropogation(self, X):
@@ -119,6 +113,6 @@ class MyModel:
             y = self.layers[i].input(y).forwardPropogation().output()
             i = i+1
         return y
-    def getBatches(self, X, batch_size):
-        batches = [X[i:i + batch_size] for i in range(0, len(X), batch_size)]
+    def getBatches(self, X, Y, batch_size):
+        batches = [(X[i:i + batch_size], Y[i:i + batch_size]) for i in range(0, len(X), batch_size)]
         return batches
