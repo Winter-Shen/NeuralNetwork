@@ -50,12 +50,12 @@ class MyLayer:
         self.Y = self.X.dot(self.weight)
         return self
     def output(self):
-        return (self.Y*self.mask)#/self.prob
+        return (self.Y*self.mask)/(1-self.prob)
     def setDy(self, dy):
         if(dy.shape[0] != self.size or dy.shape[1]!= self.outDim):
             return None
         else:
-            self.dy = (dy * self.mask)#/self.prob
+            self.dy = (dy * self.mask)/(1-self.prob)
             return self
     def backwardPropogation(self,learning_rate):
         self.dw = self.X.T.dot(self.dy)
@@ -88,35 +88,42 @@ class MyModel:
         mse = MeanSquaredError()
         metrics = CategoricalAccuracy()
 
+        loss = mse(Y, y).numpy()
+        metrics.update_state(Y, y)
+        accuracy = metrics.result().numpy()
+
         r = y-Y
         dy = 2*r/((r.shape[0])*(r.shape[1]))
-
+        
         i = self.n-1
         while(i >= 1):
             dy = self.layers[i].setDy(dy).backwardPropogation(learning_rate).getDx()
             i = i-1
 
-        y = self.predict(X)
-        metrics.update_state(Y, y)
-        return([mse(Y, y).numpy(), metrics.result().numpy()])
+        return([loss, accuracy])
     def fit(self, X, Y, learning_rate, epoches, batch_size):
         metrics = CategoricalAccuracy()
+        mse = MeanSquaredError()
         #Generate Batches
         batches = self.getBatches(X, Y, batch_size)
         l = len(batches)
         #Generate random matrix for two layers
-        randomMatrix = [np.random.rand(l, self.layers[k].outDim) for k in range(1, self.n)]
+        #randomMatrix = [np.random.rand(l, self.layers[k].outDim) for k in range(1, self.n)]
 
         for i in range(epoches):
             batchesP = tqdm(range(l), bar_format="{l_bar}")
             for j in batchesP:
-                [loss, accuracy] = self.fit0(batches[j][0], batches[j][1], learning_rate, [randomMatrix[k][j]  for k in range(0, self.n-1)])
-                batchesP.set_description("Epoch %2d: %3d/%3d; Accuracy %.3f" % (i+1, j+1, l, accuracy)) 
+
+                matrix = [np.random.rand(self.layers[k].outDim) for k in range(1, self.n)]    
+                #matrix = [randomMatrix[k][j]  for k in range(0, self.n-1)]
+                [loss, accuracy] = self.fit0(batches[j][0], batches[j][1], learning_rate, matrix)
+                batchesP.set_description("Epoch %2d: %3d/%3d; Accuracy: %.3f; Loss: %.3f" % (i+1, j+1, l, accuracy, loss))
+            '''
             y = self.predict(X)
             metrics.update_state(Y, y)
-            metrics.result().numpy()
+            batchesP.set_description("Epoch %2d: %3d/%3d; Accuracy %.3f; Loss: %.3f" % (i+1, j+1, l, metrics.result().numpy(), mse(Y, y).numpy()))
             metrics.reset_state()
-            batchesP.set_description("Epoch %2d: %3d/%3d; Accuracy %.3f" % (i+1, j+1, l, accuracy))
+            '''
     def predict(self, X_prediction):
         # Set elements in mask to True
         for k in range(1, self.n):
@@ -131,6 +138,6 @@ class MyModel:
         return y
     def getBatches(self, X, Y, batch_size):
         indices = np.arange(len(X))
-        np.random.shuffle(indices)
+        #np.random.shuffle(indices)
         batches = [(X[indices[i:i+batch_size]], Y[indices[i:i+batch_size]]) for i in range(0, len(X), batch_size)]
         return batches
