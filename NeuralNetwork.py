@@ -4,21 +4,6 @@ from keras.metrics import CategoricalAccuracy
 from tqdm import tqdm
 from keras.initializers import GlorotUniform
 
-class InputLayer:
-    def __init__(self, dim):
-        self.dim = dim
-        self.livelyNode = list(range(dim))
-    def input(self, data):
-        if(data.shape[1] != self.dim):
-            return None
-        else:
-            self.X = data
-            return self
-    def forwardPropogation(self):
-        self.Y = self.X[:,self.livelyNode]
-        return self
-    def output(self):
-        return self.Y
 class MyLayer:
     def __init__(self, inDim, outDim):
         self.inDim = inDim
@@ -36,7 +21,7 @@ class MyLayer:
     def dropout(self, prob):
         self.prob = prob
         return self
-    def initialMask(self, random_sequence):
+    def setMask(self, random_sequence):
         self.mask = random_sequence > self.prob
         return self
     def input(self, data):
@@ -80,8 +65,8 @@ class MyModel:
 
     def fit0(self, X, Y, learning_rate, random_sequences):
         # Set masks for each layer
-        for i in range(0, self.n-1):
-            self.layers[i+1].initialMask(random_sequences[i])
+        for i in range(self.n):
+            self.layers[i].setMask(random_sequences[i])
         # Forwardpropogation
         y = self.forwardPropogation(X)
 
@@ -96,7 +81,7 @@ class MyModel:
         dy = 2*r/((r.shape[0])*(r.shape[1]))
         
         i = self.n-1
-        while(i >= 1):
+        while(i >= 0):
             dy = self.layers[i].setDy(dy).backwardPropogation(learning_rate).getDx()
             i = i-1
 
@@ -107,31 +92,23 @@ class MyModel:
         #Generate Batches
         batches = self.getBatches(X, Y, batch_size)
         l = len(batches)
-        #Generate random matrix for two layers
-        #randomMatrix = [np.random.rand(l, self.layers[k].outDim) for k in range(1, self.n)]
 
         for i in range(epoches):
             batchesP = tqdm(range(l), bar_format="{l_bar}")
             for j in batchesP:
 
-                matrix = [np.random.rand(self.layers[k].outDim) for k in range(1, self.n)]    
-                #matrix = [randomMatrix[k][j]  for k in range(0, self.n-1)]
+                matrix = [np.random.rand(self.layers[k].outDim) for k in range(self.n)]    
                 [loss, accuracy] = self.fit0(batches[j][0], batches[j][1], learning_rate, matrix)
                 batchesP.set_description("Epoch %2d: %3d/%3d; Accuracy: %.3f; Loss: %.3f" % (i+1, j+1, l, accuracy, loss))
-            '''
-            y = self.predict(X)
-            metrics.update_state(Y, y)
-            batchesP.set_description("Epoch %2d: %3d/%3d; Accuracy %.3f; Loss: %.3f" % (i+1, j+1, l, metrics.result().numpy(), mse(Y, y).numpy()))
-            metrics.reset_state()
-            '''
+
     def predict(self, X_prediction):
         # Set elements in mask to True
-        for k in range(1, self.n):
-            self.layers[k].initialMask(np.ones(self.layers[k].outDim))
+        for k in range(self.n):
+            self.layers[k].setMask(np.ones(self.layers[k].outDim))
         return self.forwardPropogation(X_prediction)
     def forwardPropogation(self, X):
-        y = self.layers[0].input(X).forwardPropogation().output()
-        i = 1
+        y = X
+        i = 0
         while(i < self.n):
             y = self.layers[i].input(y).forwardPropogation().output()
             i = i+1
