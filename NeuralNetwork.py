@@ -41,6 +41,16 @@ class dropout:
     def backwardPropagation(self, dy):
         return (dy * self.mask)/(1-self.rate)
 
+class dropoutSimilar:
+    def __init__(self, rate):
+        self.rate = rate
+    def forwardPropagation(self, x):
+        k = np.random.rand(x.shape[1])
+        self.mask = k > self.rate
+        return (x*self.mask)/(1-self.rate)
+    def backwardPropagation(self, dy):
+        return (dy * self.mask)/(1-self.rate)
+
 class MyModel:
     def __init__(self):
         self.layers = []
