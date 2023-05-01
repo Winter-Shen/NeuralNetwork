@@ -111,6 +111,9 @@ class MyModel:
                 l.constructHashTable(dim, w, xx)
                 xx = x
                 x=l.forwardPropagation(x)
+            elif(isinstance(l, dropout)):
+                xx = x
+                x=l.forwardPropagation(x)
             else:
                 x=l.forwardPropagation(x)
                 dim = l.inDim
