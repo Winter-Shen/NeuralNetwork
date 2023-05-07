@@ -31,7 +31,10 @@ class MyLayer:
     def getWeight(self):
         return self.weight
 
-class dropout:
+def dropout(value, LSH = False):
+    return dropoutLSH(value) if(LSH) else dropout_normal(value)
+
+class dropout_normal:
     def __init__(self, rate):
         self.rate = rate
     def forwardPropagation(self, x):
@@ -41,7 +44,7 @@ class dropout:
     def backwardPropagation(self, dy):
         return (dy * self.mask)/(1-self.rate)
 
-class dropoutS:
+class dropoutLSH:
     def __init__(self, size):
         self.size = size
         self.rate = 1/(2**size)
@@ -64,34 +67,42 @@ class MyModel:
     def __init__(self):
         self.layers = []
         self.dataLayer = []
+        self.useLSH = False
         return 
     def addLayer(self,layer):
         self.layers.append(layer)
         self.n = 1 if(len(self.layers) == 1) else self.n+1
         if(isinstance(layer, MyLayer)):
             self.dataLayer.append(self.n-1)
+        elif(isinstance(layer, dropoutLSH)):
+            self.useLSH = True
         return self
-    def fitS(self, X, Y, learning_rate, epoches, batch_size):
+    def fit(self, X, Y, learning_rate, epoches, batch_size, progress = True):
+        fit0 = self.__fit_LSH if(self.useLSH) else self.__fit
         #Generate Batches
-        batches = self.getBatches(X, Y, batch_size)
+        batches = self.__getBatches(X, Y, batch_size)
         l = len(batches)
 
         for i in self.dataLayer:
             self.layers[i].setLearningRate(learning_rate)
 
         for i in range(epoches):
-            batchesP = tqdm(range(l), bar_format="{l_bar}")
-            #batchesP = range(l)
+            batchesP = tqdm(range(l), bar_format='{desc}{percentage:3.0f}% |{bar}| {n_fmt}/{total_fmt}{postfix}', disable=not progress)
             cm = 0
             for j in batchesP:
-                [loss, accuracy] = self.fitS0(batches[j][0], batches[j][1])
+                [loss, accuracy] = fit0(batches[j][0], batches[j][1])
                 cm = (cm * j+accuracy)/(j+1)
-                batchesP.set_description("Epoch %2d: %3d/%3d; Accuracy: %.4f; Loss: %.4f" % (i+1, j+1, l, cm, loss))
-    def fitS0(self, x, y):
+                batchesP.set_description(("LSH " if(self.useLSH) else "") + "Epoch %2d" % (i+1))
+                batchesP.set_postfix_str("Accuracy: %.4f, Loss: %.4f;" % (round(cm, 4), round(loss, 4)))
+    def predict(self, x):
+        for i in self.dataLayer:
+            x = self.layers[i].forwardPropagation(x)
+        return x
+    def __fit_LSH(self, x, y):
         # Forwardpropogation
         xx = x 
         for l in self.layers:
-            if(isinstance(l, dropoutS)):
+            if(isinstance(l, dropoutLSH)):
                 l.constructHashTable(dim, w, xx)
                 xx = x
                 x=l.forwardPropagation(x)
@@ -112,24 +123,7 @@ class MyModel:
         for l in range(self.n-1, -1, -1):
             dy = self.layers[l].backwardPropagation(dy)
         return([loss, accuracy])
-    def fit(self, X, Y, learning_rate, epoches, batch_size):
-        metrics = CategoricalAccuracy()
-        #Generate Batches
-        batches = self.getBatches(X, Y, batch_size)
-        l = len(batches)
-
-        for i in self.dataLayer:
-            self.layers[i].setLearningRate(learning_rate)
-
-        for i in range(epoches):
-            batchesP = tqdm(range(l), bar_format="{l_bar}")
-            cm = 0
-            for j in batchesP:
-                [loss, accuracy] = self.fit0(batches[j][0], batches[j][1])
-                cm = (cm * j+accuracy)/(j+1)
-                batchesP.set_description("Epoch %2d: %3d/%3d; Accuracy: %.4f; Loss: %.4f" % (i+1, j+1, l, cm, loss))
-
-    def fit0(self, x, y):
+    def __fit(self, x, y):
         # Forwardpropogation
         for l in self.layers:
             x = l.forwardPropagation(x)
@@ -146,14 +140,11 @@ class MyModel:
         for l in range(self.n-1, -1, -1):
             dy = self.layers[l].backwardPropagation(dy)
         return([loss, accuracy])
-    def getBatches(self, X, Y, batch_size):
+    def __getBatches(self, X, Y, batch_size):
         indices = np.arange(len(X))
         batches = [(X[indices[i:i+batch_size]], Y[indices[i:i+batch_size]]) for i in range(0, len(X), batch_size)]
         return batches
-    def predict(self, x):
-        for i in self.dataLayer:
-            x = self.layers[i].forwardPropagation(x)
-        return x
+
     
 class HashTable:
     def __init__(self, hash_size, dim):
