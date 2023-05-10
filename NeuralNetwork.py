@@ -6,7 +6,7 @@ from keras.initializers import GlorotUniform
 
 
 class MyLayer:
-    def __init__(self, in_dim, out_dim, dropout = False, dropout_probability = None, dropout_lsh = False, function_num = None):
+    def __init__(self, in_dim, out_dim, dropout = False, dropout_probability = None, dropout_lsh = False, function_num = None, table_num = None):
         self.inDim = in_dim
         self.outDim = out_dim
         self.initializeWeight(GlorotUniform())
@@ -15,10 +15,12 @@ class MyLayer:
         self.dropout_probability = dropout_probability
         self.dropout_lsh = dropout_lsh
         self.function_num = function_num
+        self.function_num = table_num
         if(dropout):
             self.rate = 1-dropout_probability
         if(dropout_lsh):
-            self.rate = 1/(2**function_num)
+            self.rate = 1-(1-1/(2**function_num))**table_num
+            #self.rate = 1/(2**function_num)
     def dropoutConfiguration(self):
         return int(self.dropout) + int(self.dropout_lsh)
     def initializeWeight(self, initializer):
@@ -80,6 +82,7 @@ class MyModel:
         # Forwardpropogation
         for l in self.layers:
             x = l.forwardPropagation(x)
+
         y_hat = x
         mse = MeanSquaredError()
         metrics = CategoricalAccuracy()
