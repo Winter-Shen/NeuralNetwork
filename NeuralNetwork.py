@@ -30,7 +30,7 @@ class MyLayer:
             self.weight = weight.astype(np.float64)
             return self
     def setLearningRate(self, learning_rate):
-        self.learningRate = learning_rate   
+        self.learningRate = learning_rate 
     def forwardPropagation(self, x, prediction = False):
         self.x = x.astype(np.float64)
         # prediction 
@@ -62,7 +62,7 @@ class MyLayer:
         dx = dy.dot(self.weight.T)
         self.weight = self.weight - self.learningRate * self.dw
         return dx
-    def reset(self, in_dim = None, out_dim = None, dropout = None, dropout_probability = None, dropout_lsh = None, function_num = None):
+    def reset(self):
         self.initializeWeight(GlorotUniform())
     def getWeight(self):
         return self.weight
