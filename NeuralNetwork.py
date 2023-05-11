@@ -6,7 +6,7 @@ from keras.initializers import GlorotUniform
 
 
 class MyLayer:
-    def __init__(self, in_dim, out_dim, dropout = False, dropout_probability = None, dropout_lsh = False, function_num = None, table_num = None):
+    def __init__(self, in_dim, out_dim, dropout = False, dropout_probability = None, dropout_lsh = False, function_num = None, table_num = 1):
         self.inDim = in_dim
         self.outDim = out_dim
         self.initializeWeight(GlorotUniform())
@@ -18,7 +18,7 @@ class MyLayer:
         self.function_num = table_num
         if(dropout):
             self.rate = 1-dropout_probability
-        if(dropout_lsh):
+        elif(dropout_lsh):
             self.rate = 1-(1-1/(2**function_num))**table_num
             #self.rate = 1/(2**function_num)
     def dropoutConfiguration(self):
@@ -56,10 +56,10 @@ class MyLayer:
         # No dropout
         else:
             return self.x.dot(self.weight)
-        return (self.x.dot(self.weight)*self.mask)/self.rate
+        return (self.x.dot(self.weight)*self.mask)#/self.rate
     def backwardPropagation(self,dy):
         if self.rate is not None:
-            dy = (dy*self.mask)/(self.rate)
+            dy = (dy*self.mask)#/(self.rate)
         self.dw = self.x.T.dot(dy)
         dx = dy.dot(self.weight.T)
         self.weight = self.weight - self.learningRate * self.dw
