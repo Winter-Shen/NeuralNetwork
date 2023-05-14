@@ -20,7 +20,6 @@ class MyLayer:
             self.rate = 1-dropout_probability
         elif(dropout_lsh):
             self.rate = 1-(1-1/(2**function_num))**table_num
-            #self.rate = 1/(2**function_num)
     def dropoutConfiguration(self):
         return int(self.dropout) + int(self.dropout_lsh)
     def initializeWeight(self, initializer):
@@ -43,7 +42,7 @@ class MyLayer:
             self.mask = np.random.rand(self.outDim) > self.dropout_probability
         # LSH dropout
         elif(self.dropout_lsh):
-            self.rate = (1-1/(2**self.function_num))
+            #self.rate = (1-1/(2**self.function_num))
             # Construct Hash table
             hashTable = HashTable(hash_size=self.function_num, dim=self.inDim)
             for i, r in enumerate(self.weight.T):
@@ -56,10 +55,10 @@ class MyLayer:
         # No dropout
         else:
             return self.x.dot(self.weight)
-        return (self.x.dot(self.weight)*self.mask)#/self.rate
+        return (self.x.dot(self.weight)*self.mask)/self.rate
     def backwardPropagation(self,dy):
         if self.rate is not None:
-            dy = (dy*self.mask)#/(self.rate)
+            dy = (dy*self.mask)/(self.rate)
         self.dw = self.x.T.dot(dy)
         dx = dy.dot(self.weight.T)
         self.weight = self.weight - self.learningRate * self.dw
