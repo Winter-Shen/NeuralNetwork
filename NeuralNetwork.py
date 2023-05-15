@@ -15,7 +15,7 @@ class MyLayer:
         self.dropout_probability = dropout_probability
         self.dropout_lsh = dropout_lsh
         self.function_num = function_num
-        self.function_num = table_num
+        self.table_num = table_num
         if(dropout):
             self.rate = 1-dropout_probability
         elif(dropout_lsh):
@@ -42,7 +42,19 @@ class MyLayer:
             self.mask = np.random.rand(self.outDim) > self.dropout_probability
         # LSH dropout
         elif(self.dropout_lsh):
-            #self.rate = (1-1/(2**self.function_num))
+            
+            tables = [HashTable(hash_size=self.function_num, dim=self.inDim) for i in range(self.table_num)]
+            for t in tables:
+                for i, r in enumerate(self.weight.T):
+                    t[r] = i
+
+            self.mask = np.zeros((x.shape[0],self.outDim), np.int8)
+            for i, r in enumerate(x):
+                keep = set()
+                for t in tables:
+                    keep = set(t[r]) | keep
+                self.mask[i][list(keep)] = 1
+            '''
             # Construct Hash table
             hashTable = HashTable(hash_size=self.function_num, dim=self.inDim)
             for i, r in enumerate(self.weight.T):
@@ -52,6 +64,7 @@ class MyLayer:
             for i, r in enumerate(x):
                 keep = hashTable[r]
                 self.mask[i][keep] = 1
+            '''
         # No dropout
         else:
             return self.x.dot(self.weight)
