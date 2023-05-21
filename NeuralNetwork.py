@@ -42,40 +42,40 @@ class MyLayer:
             self.mask = np.random.rand(self.outDim) > self.dropout_probability
         # LSH dropout
         elif(self.dropout_lsh):
-            
-            tables = [HashTable(hash_size=self.function_num, dim=self.inDim) for i in range(self.table_num)]
-            for t in tables:
-                for i, r in enumerate(self.weight.T):
-                    t[r] = i
-
-            self.mask = np.zeros((x.shape[0],self.outDim), np.int8)
-            for i, r in enumerate(x):
-                keep = set()
-                for t in tables:
-                    keep = set(t[r]) | keep
-                self.mask[i][list(keep)] = 1
-            '''
-            # Construct Hash table
-            hashTable = HashTable(hash_size=self.function_num, dim=self.inDim)
-            for i, r in enumerate(self.weight.T):
-                hashTable[r] = i
-            # Construct mask matrix
-            self.mask = np.zeros((x.shape[0],self.outDim), np.int8)
-            for i, r in enumerate(x):
-                keep = hashTable[r]
-                self.mask[i][keep] = 1
-            '''
+            self.__maskLSH()
         # No dropout
         else:
             return self.x.dot(self.weight)
         return (self.x.dot(self.weight)*self.mask)/self.rate
     def backwardPropagation(self,dy):
+        '''
         if self.rate is not None:
             dy = (dy*self.mask)/(self.rate)
         self.dw = self.x.T.dot(dy)
         dx = dy.dot(self.weight.T)
         self.weight = self.weight - self.learningRate * self.dw
+        '''
+        self.dw = self.x.T.dot(dy)
+        self.weight = self.weight - self.learningRate * self.dw
+
+        if self.dropout_lsh:
+            self.__maskLSH()
+
+        if self.rate is not None:
+            dy = (dy*self.mask)/(self.rate)
+        dx = dy.dot(self.weight.T)
         return dx
+    def __maskLSH(self):
+        tables = [HashTable(hash_size=self.function_num, dim=self.inDim) for i in range(self.table_num)]
+        for t in tables:
+            for i, r in enumerate(self.weight.T):
+                t[r] = i
+        self.mask = np.zeros((self.x.shape[0],self.outDim), np.int8)
+        for i, r in enumerate(self.x):
+            keep = set()
+            for t in tables:
+                keep = set(t[r]) | keep
+            self.mask[i][list(keep)] = 1
     def reset(self):
         self.initializeWeight(GlorotUniform())
     def getWeight(self):
