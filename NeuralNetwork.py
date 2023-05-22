@@ -48,12 +48,13 @@ class MyLayer:
             return self.x.dot(self.weight)
         return (self.x.dot(self.weight)*self.mask)/self.rate
     def backwardPropagation(self,dy):
-        '''
+        
+
+        self.dw = self.x.T.dot(dy)
+        self.weight = self.weight - self.learningRate * self.dw
         if self.rate is not None:
             dy = (dy*self.mask)/(self.rate)
-        self.dw = self.x.T.dot(dy)
         dx = dy.dot(self.weight.T)
-        self.weight = self.weight - self.learningRate * self.dw
         '''
         self.dw = self.x.T.dot(dy)
         self.weight = self.weight - self.learningRate * self.dw
@@ -64,6 +65,7 @@ class MyLayer:
         if self.rate is not None:
             dy = (dy*self.mask)/(self.rate)
         dx = dy.dot(self.weight.T)
+        '''
         return dx
     def __maskLSH(self):
         tables = [HashTable(hash_size=self.function_num, dim=self.inDim) for i in range(self.table_num)]
