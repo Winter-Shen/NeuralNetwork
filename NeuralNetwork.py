@@ -57,7 +57,6 @@ class MyLayer:
     def backwardPropagation(self,dy):
         if self.rate is not None:
             dy = (dy*self.mask)/(self.rate)
-        self.dw = self.x.T.dot(dy)
         dx = dy.dot(self.weight.T)
         self.weight = self.weight - self.learningRate * self.dw
         if(self.dropout_lsh):
