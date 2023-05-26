@@ -58,6 +58,7 @@ class MyLayer:
         if self.rate is not None:
             dy = (dy*self.mask)/(self.rate)
         dx = dy.dot(self.weight.T)
+        self.dw = self.x.T.dot(dy)
         self.weight = self.weight - self.learningRate * self.dw
         if(self.dropout_lsh):
             self.__resetHashTable()
