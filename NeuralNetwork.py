@@ -20,6 +20,8 @@ class MyLayer:
             self.rate = 1-dropout_probability
         elif(dropout_lsh):
             self.rate = 1-(1-1/(2**function_num))**table_num
+            self.tables = [HashTable(hash_size=function_num, dim=in_dim) for i in range(table_num)]
+            self.__hashWeight()
     def dropoutConfiguration(self):
         return int(self.dropout) + int(self.dropout_lsh)
     def initializeWeight(self, initializer):
@@ -36,47 +38,48 @@ class MyLayer:
         self.x = x.astype(np.float64)
         # prediction 
         if(prediction):
+            '''
+            if(self.dropout_lsh):
+                self.__maskLSH()
+                return (self.x.dot(self.weight)*self.mask)/self.rate
+            '''
             return self.x.dot(self.weight)
         # standard dropout
         if(self.dropout):
             self.mask = np.random.rand(self.outDim) > self.dropout_probability
         # LSH dropout
         elif(self.dropout_lsh):
-            self.__maskLSH()
+            self.__hashX()
         # No dropout
         else:
             return self.x.dot(self.weight)
         return (self.x.dot(self.weight)*self.mask)/self.rate
     def backwardPropagation(self,dy):
-        '''
         if self.rate is not None:
             dy = (dy*self.mask)/(self.rate)
         self.dw = self.x.T.dot(dy)
         dx = dy.dot(self.weight.T)
         self.weight = self.weight - self.learningRate * self.dw
-        '''
-        self.dw = self.x.T.dot(dy)
-        self.weight = self.weight - self.learningRate * self.dw
-
-        if self.dropout_lsh:
-            self.__maskLSH()
-
-        if self.rate is not None:
-            dy = (dy*self.mask)/(self.rate)
-        dx = dy.dot(self.weight.T)
+        if(self.dropout_lsh):
+            self.__resetHashTable()
+            self.__hashWeight()
         return dx
-    def __maskLSH(self):
-        tables = [HashTable(hash_size=self.function_num, dim=self.inDim) for i in range(self.table_num)]
-        for t in tables:
+    def __hashWeight(self):
+        for t in self.tables:
+            t.reset()
             for i, r in enumerate(self.weight.T):
                 t[r] = i
+    def __hashX(self):
         self.mask = np.zeros((self.x.shape[0],self.outDim), np.int8)
         for i, r in enumerate(self.x):
             keep = set()
-            for t in tables:
+            for t in self.tables:
                 keep = set(t[r]) | keep
             self.mask[i][list(keep)] = 1
-    def reset(self):
+    def __resetHashTable(self):
+        for t in self.tables:
+            t.reset()   
+    def resetWeight(self):
         self.initializeWeight(GlorotUniform())
     def getWeight(self):
         return self.weight
@@ -128,9 +131,9 @@ class MyModel:
         for l in self.layers:
             x = l.forwardPropagation(x, prediction = True)
         return x
-    def reset(self):
+    def resetWeight(self):
         for l in self.layers:
-            l.reset()
+            l.resetWeight()
     def __getBatches(self, X, Y, batch_size):
         indices = np.arange(len(X))
         batches = [(X[indices[i:i+batch_size]], Y[indices[i:i+batch_size]]) for i in range(0, len(X), batch_size)]
@@ -143,6 +146,9 @@ class HashTable:
         self.inp_dimensions = dim
         self.hash_table = dict()
         self.projections = np.random.randn(self.hash_size, dim)
+
+    def reset(self):
+        self.hash_table.clear()
         
     def generate_hash(self, inp_vector):
         bools = (np.dot(inp_vector, self.projections.T) > 0).astype('int')
@@ -155,35 +161,3 @@ class HashTable:
     def __getitem__(self, inp_vec):
         hash_value = self.generate_hash(inp_vec)
         return self.hash_table.get(hash_value, [])
-
-def dropout(value, LSH = False):
-    return dropoutLSH(value) if(LSH) else dropout_normal(value)
-
-class dropout_normal:
-    def __init__(self, rate):
-        self.rate = rate
-    def forwardPropagation(self, x):
-        k = np.random.rand(x.shape[1])
-        self.mask = k > self.rate
-        return (x*self.mask)/(1-self.rate)
-    def backwardPropagation(self, dy):
-        return (dy * self.mask)/(1-self.rate)
-
-class dropoutLSH:
-    def __init__(self, size):
-        self.size = size
-        self.rate = 1/(2**size)
-    def constructHashTable(self,dim,weight,x):
-        # Construct Hash table
-        self.hashTable = HashTable(hash_size=self.size, dim=dim)
-        for i, r in enumerate(weight.T):
-            self.hashTable[r] = i
-        # Construct mask matrix
-        self.mask = np.zeros((x.shape[0],weight.shape[1]), np.int8)
-        for i, r in enumerate(x):
-            keep = self.hashTable[r]
-            self.mask[i][keep] = 1
-    def forwardPropagation(self, x):
-        return (x*self.mask)/(self.rate)
-    def backwardPropagation(self, dy):
-        return (dy*self.mask)/(self.rate)
