@@ -123,7 +123,7 @@ class MyModel:
         self.layers.append(layer)
         self.n = 1 if(len(self.layers) == 1) else self.n+1
         return self
-    # An iteration
+    # A forward and backward cycle
     def __fit(self, x, y):
         # Forwardpropogation
         for l in self.layers:
