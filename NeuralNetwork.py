@@ -6,12 +6,12 @@ from keras.initializers import GlorotUniform
 
 class MyLayer:
     def __init__(self, in_dim, out_dim, dropout = False, dropout_probability = None, dropout_lsh = False, function_num = None, table_num = 1):
-        self.inDim = in_dim
-        self.outDim = out_dim
-        self.initializeWeight(GlorotUniform())
-        self.rate = None
-        self.dropout = dropout
-        self.dropout_lsh = dropout_lsh
+        self.in_dim = in_dim # number of dimesnions in the input set
+        self.out_dim = out_dim # number of dimesnions in the output set -- number of neurals
+        self.initializeWeight(GlorotUniform()) 
+        self.rate = None # drop out rate
+        self.dropout = dropout # flag to drop out
+        self.dropout_lsh = dropout_lsh # flag to drop out with LSH method
         if(dropout and dropout_probability is not None):
             self.dropout_probability = dropout_probability
             self.rate = 1-dropout_probability
@@ -21,38 +21,43 @@ class MyLayer:
             self.buckect_num = 2**function_num
             self.rate = 1-(1-1/(2**function_num))**table_num
 
-            self.hash_tables = [[set() for j in range(self.buckect_num)] for i in range(table_num)]
-            self.fingerprint_dicts = [dict() for i in range(table_num)]            
-            self.projections = [np.random.randn(in_dim, function_num) for i in range(table_num)]
+            self.hash_tables = [[set()]*self.buckect_num]*table_num # Hash tables 
+            self.hash_values = [[0]*out_dim]*table_num # Lists to hold hash values to avoid repeating computing hash values
+            self.projections = [np.random.randn(in_dim, function_num)]*table_num # Projection vector, the component of hash function
 
             self.__constructHashTable()
-            #self.tables = [HashTable(hash_size=function_num, dim=in_dim) for i in range(table_num)]
-            #self.__hashWeight()
     def dropoutConfiguration(self):
-        return int(self.dropout) + int(self.dropout_lsh)
+        code = 0
+        code = code^(self.dropout<<1)
+        code = code^(self.dropout_lsh)
+        return code
+    # Initialize weight matrix by a initializer of keras.initializers
     def initializeWeight(self, initializer):
-        return self.setWeight(initializer((self.inDim, self.outDim)).numpy())
+        return self.setWeight(initializer((self.in_dim, self.out_dim)).numpy())
+    # Initialize weight matrix by a numpy array
     def setWeight(self, weight):
-        if(weight.shape[0] != self.inDim or weight.shape[1]!= self.outDim):
+        if(weight.shape[0] != self.in_dim or weight.shape[1]!= self.out_dim):
             return None
         else:
             self.weight = weight.astype(np.float64)
             return self
+    # Set learning rate
     def setLearningRate(self, learning_rate):
         self.learningRate = learning_rate 
+    # Take input set x and return output set after forward propagation
     def forwardPropagation(self, x, prediction = False):
         self.x = x.astype(np.float64)
         # prediction 
         if(prediction):
-            '''
+
             if(self.dropout_lsh):
-                self.__maskLSH()
+                self.__collectActiveSet()
                 return (self.x.dot(self.weight)*self.mask)/self.rate
-            '''
+
             return self.x.dot(self.weight)
         # standard dropout
         if(self.dropout and self.dropout_probability is not None):
-            self.mask = np.random.rand(self.outDim) > self.dropout_probability
+            self.mask = np.random.rand(self.out_dim) > self.dropout_probability
         # LSH dropout
         elif(self.dropout_lsh):
             self.__collectActiveSet()
@@ -60,6 +65,7 @@ class MyLayer:
         else:
             return self.x.dot(self.weight)
         return (self.x.dot(self.weight)*self.mask)/self.rate
+    # Take derivatives of output set and return derivatives of inputset set after backward propagation
     def backwardPropagation(self,dy):
         if self.rate is not None:
             dy = (dy*self.mask)/(self.rate)
@@ -74,10 +80,10 @@ class MyLayer:
 
             for i in range(self.table_num):
                 hash_value = self.__computeFingerprint(w, self.projections[i])
-                self.fingerprint_dicts[i][idx] = hash_value
+                self.hash_values[i][idx] = hash_value
                 self.hash_tables[i][hash_value].add(idx)
     def __collectActiveSet(self):
-        self.mask = np.zeros((self.x.shape[0],self.outDim), np.int8)
+        self.mask = np.zeros((self.x.shape[0],self.out_dim), np.int8)
         for i, x in enumerate(self.x):
             acitive_set = set()
             for t,projection in enumerate(self.projections):
@@ -87,10 +93,10 @@ class MyLayer:
     def __updateHashTables(self):
         for idx, w in enumerate(self.weight.T):
             for i in range(self.table_num):
-                self.hash_tables[i][self.fingerprint_dicts[i][idx]].remove(idx)
+                self.hash_tables[i][self.hash_values[i][idx]].remove(idx)
 
                 hash_value = self.__computeFingerprint(w, self.projections[i])        
-                self.fingerprint_dicts[i][idx] = hash_value
+                self.hash_values[i][idx] = hash_value
                 self.hash_tables[i][hash_value].add(idx)
 
     def __computeFingerprint(self, vector, projection):
@@ -101,12 +107,13 @@ class MyLayer:
         return hash_value
     def __computeFingerprints(self, vector):
         return [self.__computeFingerprint(vector, projection) for projection in self.projections]
-
-    def resetWeight(self):
+    def reset(self):
         self.initializeWeight(GlorotUniform())
-    def getWeight(self):
-        return self.weight
-
+        if(self.dropout_lsh):
+            self.hash_tables = [[set()]*self.buckect_num]*self.table_num
+            self.hash_values = [[0]*self.out_dim]*self.table_num
+            self.projections = [np.random.randn(self.in_dim, self.function_num)]*self.table_num
+            self.__constructHashTable()
 
 class MyModel:
     def __init__(self):
@@ -116,6 +123,7 @@ class MyModel:
         self.layers.append(layer)
         self.n = 1 if(len(self.layers) == 1) else self.n+1
         return self
+    # An iteration
     def __fit(self, x, y):
         # Forwardpropogation
         for l in self.layers:
@@ -154,9 +162,9 @@ class MyModel:
         for l in self.layers:
             x = l.forwardPropagation(x, prediction = True)
         return x
-    def resetWeight(self):
+    def reset(self):
         for l in self.layers:
-            l.resetWeight()
+            l.reset()
     def __getBatches(self, X, Y, batch_size):
         indices = np.arange(len(X))
         batches = [(X[indices[i:i+batch_size]], Y[indices[i:i+batch_size]]) for i in range(0, len(X), batch_size)]
