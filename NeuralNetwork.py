@@ -4,7 +4,6 @@ from keras.metrics import CategoricalAccuracy
 from tqdm import tqdm
 from keras.initializers import GlorotUniform
 
-
 class MyLayer:
     def __init__(self, in_dim, out_dim, dropout = False, dropout_probability = None, dropout_lsh = False, function_num = None, table_num = 1):
         self.inDim = in_dim
@@ -12,16 +11,23 @@ class MyLayer:
         self.initializeWeight(GlorotUniform())
         self.rate = None
         self.dropout = dropout
-        self.dropout_probability = dropout_probability
         self.dropout_lsh = dropout_lsh
-        self.function_num = function_num
-        self.table_num = table_num
-        if(dropout):
+        if(dropout and dropout_probability is not None):
+            self.dropout_probability = dropout_probability
             self.rate = 1-dropout_probability
-        elif(dropout_lsh):
+        elif(dropout_lsh and function_num is not None):
+            self.function_num = function_num
+            self.table_num = table_num
+            self.buckect_num = 2**function_num
             self.rate = 1-(1-1/(2**function_num))**table_num
-            self.tables = [HashTable(hash_size=function_num, dim=in_dim) for i in range(table_num)]
-            self.__hashWeight()
+
+            self.hash_tables = [[set() for j in range(self.buckect_num)] for i in range(table_num)]
+            self.fingerprint_dicts = [dict() for i in range(table_num)]            
+            self.projections = [np.random.randn(in_dim, function_num) for i in range(table_num)]
+
+            self.__constructHashTable()
+            #self.tables = [HashTable(hash_size=function_num, dim=in_dim) for i in range(table_num)]
+            #self.__hashWeight()
     def dropoutConfiguration(self):
         return int(self.dropout) + int(self.dropout_lsh)
     def initializeWeight(self, initializer):
@@ -45,11 +51,11 @@ class MyLayer:
             '''
             return self.x.dot(self.weight)
         # standard dropout
-        if(self.dropout):
+        if(self.dropout and self.dropout_probability is not None):
             self.mask = np.random.rand(self.outDim) > self.dropout_probability
         # LSH dropout
         elif(self.dropout_lsh):
-            self.__hashX()
+            self.__collectActiveSet()
         # No dropout
         else:
             return self.x.dot(self.weight)
@@ -61,24 +67,41 @@ class MyLayer:
         self.dw = self.x.T.dot(dy)
         self.weight = self.weight - self.learningRate * self.dw
         if(self.dropout_lsh):
-            self.__resetHashTable()
-            self.__hashWeight()
+            self.__updateHashTables()
         return dx
-    def __hashWeight(self):
-        for t in self.tables:
-            t.reset()
-            for i, r in enumerate(self.weight.T):
-                t[r] = i
-    def __hashX(self):
+    def __constructHashTable(self):
+        for idx, w in enumerate(self.weight.T):
+
+            for i in range(self.table_num):
+                hash_value = self.__computeFingerprint(w, self.projections[i])
+                self.fingerprint_dicts[i][idx] = hash_value
+                self.hash_tables[i][hash_value].add(idx)
+    def __collectActiveSet(self):
         self.mask = np.zeros((self.x.shape[0],self.outDim), np.int8)
-        for i, r in enumerate(self.x):
-            keep = set()
-            for t in self.tables:
-                keep = set(t[r]) | keep
-            self.mask[i][list(keep)] = 1
-    def __resetHashTable(self):
-        for t in self.tables:
-            t.reset()   
+        for i, x in enumerate(self.x):
+            acitive_set = set()
+            for t,projection in enumerate(self.projections):
+                fp = self.__computeFingerprint(x, projection)
+                acitive_set = self.hash_tables[t][fp] | acitive_set
+            self.mask[i][list(acitive_set)] = 1
+    def __updateHashTables(self):
+        for idx, w in enumerate(self.weight.T):
+            for i in range(self.table_num):
+                self.hash_tables[i][self.fingerprint_dicts[i][idx]].remove(idx)
+
+                hash_value = self.__computeFingerprint(w, self.projections[i])        
+                self.fingerprint_dicts[i][idx] = hash_value
+                self.hash_tables[i][hash_value].add(idx)
+
+    def __computeFingerprint(self, vector, projection):
+        hash_vector = (np.dot(vector, projection) > 0).astype('int8')
+        hash_value = 0
+        for b, s in enumerate(hash_vector):
+            hash_value = hash_value^(s<<b)
+        return hash_value
+    def __computeFingerprints(self, vector):
+        return [self.__computeFingerprint(vector, projection) for projection in self.projections]
+
     def resetWeight(self):
         self.initializeWeight(GlorotUniform())
     def getWeight(self):
@@ -138,26 +161,3 @@ class MyModel:
         indices = np.arange(len(X))
         batches = [(X[indices[i:i+batch_size]], Y[indices[i:i+batch_size]]) for i in range(0, len(X), batch_size)]
         return batches
-
-    
-class HashTable:
-    def __init__(self, hash_size, dim):
-        self.hash_size = hash_size
-        self.inp_dimensions = dim
-        self.hash_table = dict()
-        self.projections = np.random.randn(self.hash_size, dim)
-
-    def reset(self):
-        self.hash_table.clear()
-        
-    def generate_hash(self, inp_vector):
-        bools = (np.dot(inp_vector, self.projections.T) > 0).astype('int')
-        return ''.join(bools.astype('str'))
-
-    def __setitem__(self, inp_vec, label):
-        hash_value = self.generate_hash(inp_vec)
-        self.hash_table[hash_value] = self.hash_table.get(hash_value, list()) + [label]
-        
-    def __getitem__(self, inp_vec):
-        hash_value = self.generate_hash(inp_vec)
-        return self.hash_table.get(hash_value, [])
