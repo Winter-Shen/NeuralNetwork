@@ -26,11 +26,13 @@ class MyLayer:
             self.projections = [np.random.randn(in_dim + 1, function_num)]*table_num # Projection vector, the component of hash function
 
             self.__constructHashTable()
-        
-    def configureBatchParameter(self, n, batch_size):
-        self.mask_X = np.full((n,self.out_dim), 0)
+
+    def globalSettings(self, n, batch_size, learning_rate):
+        self.mask_X = np.full((n,self.out_dim), 0, dtype=bool)
         self.batch_size = np.append(np.full(n//batch_size, batch_size), n%batch_size)
         self.computed_mask_batch_flag = np.zeros(n//batch_size + 1, dtype=bool)
+        self.learning_rate = learning_rate 
+
 
     def dropoutConfiguration(self):
         return 0^(self.dropout<<1)^(self.dropout_lsh)
@@ -44,10 +46,6 @@ class MyLayer:
         self.weight = weight.astype(np.float64)
         return self
 
-    # Set learning rate
-    def setLearningRate(self, learning_rate):
-        self.learning_rate = learning_rate 
-
     # Take input set x and return output set after forward propagation
     def forwardPropagation(self, x, batch_label = -1, prediction = False):
         self.batch = x.astype(np.float64)
@@ -57,6 +55,7 @@ class MyLayer:
             if(self.dropout_lsh):
                 self.__collectActiveSet(batch_label)
                 return (self.batch.dot(self.weight)*self.mask)/self.rate
+                #return (self.batch.dot(self.weight))
 
             return self.batch.dot(self.weight)
         # standard dropout
@@ -127,7 +126,7 @@ class MyLayer:
                 # Fix weight vector
                 weight = w/self.max_norm
                 norm = self.norm[idx]
-                e = np.sqrt(1-(norm/self.max_norm)**2)
+                e = np.sqrt(np.abs(1-(norm/self.max_norm)**2))
                 new_w = np.append(weight, e)
                 
                 hash_value = self.__computeFingerprint(new_w, self.projections[i])
@@ -213,9 +212,9 @@ class MyModel:
         l = len(batches)
 
         for layer in self.layers:
-            layer.setLearningRate(learning_rate)
-            layer.configureBatchParameter(X.shape[0], batch_size)
-            
+            #layer.setLearningRate(learning_rate)
+            #layer.configureBatchParameter(X.shape[0], batch_size)
+            layer.globalSettings(X.shape[0], batch_size, learning_rate)
 
         for i in range(epoches):
             batchesP = tqdm(range(l), bar_format='{desc}{percentage:3.0f}% |{bar}| {n_fmt}/{total_fmt}{postfix}', disable=not progress)
