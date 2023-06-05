@@ -21,9 +21,10 @@ class MyLayer:
             self.buckect_num = 2**function_num
             self.rate = 1-(1-1/(2**function_num))**table_num
 
-            self.hash_tables = [[set()]*self.buckect_num]*table_num # Hash tables 
-            self.hash_values = [[0]*out_dim]*table_num # Lists to hold hash values to avoid repeating computing hash values
-            self.projections = [np.random.randn(in_dim + 1, function_num)]*table_num # Projection vector, the component of hash function
+            #self.hash_tables = [[set()]*self.buckect_num]*table_num # Hash tables 
+            self.hash_tables = [[set() for j in range(self.buckect_num)] for i in range(table_num)]
+            self.hash_values = [[0 for j in range(out_dim)] for i in range(table_num)] # Lists to hold hash values to avoid repeating computing hash values
+            self.projections = [np.random.randn(in_dim + 1, function_num) for i in range(table_num)] # Projection vector, the component of hash function
 
             self.__constructHashTable()
 
@@ -55,7 +56,7 @@ class MyLayer:
             if(self.dropout_lsh):
                 self.__collectActiveSet(batch_label)
                 return (self.batch.dot(self.weight)*self.mask)/self.rate
-                #return (self.batch.dot(self.weight))
+                #return (self.batch.dot(self.weight))#*self.mask
 
             return self.batch.dot(self.weight)
         # standard dropout
@@ -67,12 +68,14 @@ class MyLayer:
         # No dropout
         else:
             return self.batch.dot(self.weight)
-        return (self.batch.dot(self.weight)*self.mask)/self.rate
+        #return (self.batch.dot(self.weight)*self.mask)/self.rate
+        return (self.batch.dot(self.weight)*self.mask)
 
     # Take derivatives of output set and return derivatives of inputset set after backward propagation
     def backwardPropagation(self,dy):
         if self.rate is not None:
-            dy = (dy*self.mask)/(self.rate)
+            #dy = (dy*self.mask)/(self.rate)
+            dy = (dy*self.mask)
         dx = dy.dot(self.weight.T)
         self.dw = self.batch.T.dot(dy)
         self.weight = self.weight - self.learning_rate * self.dw
@@ -171,9 +174,10 @@ class MyLayer:
     def reset(self):
         self.initializeWeight(GlorotUniform())
         if(self.dropout_lsh):
-            self.hash_tables = [[set()]*self.buckect_num]*self.table_num
-            self.hash_values = [[0]*self.out_dim]*self.table_num
-            self.projections = [np.random.randn(self.in_dim + 1, self.function_num)]*self.table_num
+
+            self.hash_tables = [[set() for j in range(self.buckect_num)] for i in range(self.table_num)]
+            self.hash_values = [[0 for j in range(self.out_dim)] for i in range(self.table_num)] # Lists to hold hash values to avoid repeating computing hash values
+            self.projections = [np.random.randn(self.in_dim + 1, self.function_num) for i in range(self.table_num)] # Projection vector, the component of hash function
             self.__constructHashTable()
 
 class MyModel:
