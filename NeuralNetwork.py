@@ -56,7 +56,7 @@ class MyLayer:
             if(self.dropout_lsh):
                 self.__collectActiveSet(batch_label)
                 return (self.batch.dot(self.weight)*self.mask)/self.rate
-                #return (self.batch.dot(self.weight))#*self.mask
+                #return (self.batch.dot(self.weight))
 
             return self.batch.dot(self.weight)
         # standard dropout
@@ -68,14 +68,14 @@ class MyLayer:
         # No dropout
         else:
             return self.batch.dot(self.weight)
-        #return (self.batch.dot(self.weight)*self.mask)/self.rate
-        return (self.batch.dot(self.weight)*self.mask)
+        return (self.batch.dot(self.weight)*self.mask)/self.rate
+        #return (self.batch.dot(self.weight)*self.mask)
 
     # Take derivatives of output set and return derivatives of inputset set after backward propagation
     def backwardPropagation(self,dy):
         if self.rate is not None:
-            #dy = (dy*self.mask)/(self.rate)
-            dy = (dy*self.mask)
+            dy = (dy*self.mask)/(self.rate)
+            #dy = (dy*self.mask)
         dx = dy.dot(self.weight.T)
         self.dw = self.batch.T.dot(dy)
         self.weight = self.weight - self.learning_rate * self.dw
