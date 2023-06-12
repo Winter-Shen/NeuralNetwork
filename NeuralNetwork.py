@@ -5,7 +5,7 @@ from tqdm import tqdm
 from keras.initializers import GlorotUniform
 
 class MyLayer:
-    def __init__(self, in_dim, out_dim, dropout = False, dropout_probability = None, dropout_lsh = False, function_num = None, table_num = 1):
+    def __init__(self, in_dim, out_dim, dropout = False, dropout_probability = None, dropout_lsh = False, function_num = None, table_num = 1, wta = False, top = None):
         self.in_dim = in_dim # number of dimesnions in the input set
         self.out_dim = out_dim # number of dimesnions in the output set -- number of neurals
         self.rate = None # drop out rate
@@ -27,6 +27,7 @@ class MyLayer:
             self.projections = [np.random.randn(in_dim + 1, function_num) for i in range(table_num)] # Projection vector, the component of hash function
 
             self.__constructHashTable()
+            
 
     def globalSettings(self, n, batch_size, learning_rate):
         self.mask_X = np.full((n,self.out_dim), 0, dtype=bool)
