@@ -13,15 +13,16 @@ class LayerLSH(Layer):
 
     # Take input set x and return output set after forward propagation
     def forwardPropagation(self, x: np.ndarray) -> np.ndarray:
+        self._x = x
         active_set = set()
         for i in range(self._table_num):
-            hash_vector = np.dot(x, self._projections[i].T)
-            hash_value = self.__binary_vector_to_integer(hash_vector)
+            hash_vector = np.dot(x, self._projections[i].T) > 0
+            hash_value = self.__binary_vector_to_integer(hash_vector)[0]
             active_set = self._hash_tables[i][hash_value] | active_set
         active_set_idx = list(active_set)
 
-        self.mask = np.zeros(self._out_dim, dtype=bool)
-        self.mask[active_set_idx] = True
+        self._mask = np.zeros(self._out_dim, dtype=bool)
+        self._mask[active_set_idx] = True
         return np.dot(x, self._weight)*self._mask
 
     # Take derivatives of output set and return derivatives of inputset set after backward propagation
@@ -60,10 +61,10 @@ class LayerLSH(Layer):
             value = value^(s<<b)
         return value
     
-    def __binary_vector_by_hash_vector(self, vector, table_label):
+    def __binary_vector_by_hash_vector(self, vector, args):
         mask = np.zeros(self._out_dim, dtype=bool)
         hash_value = self.__binary_vector_by_hash_vector(vector)
-        active_set = list(self._hash_tables[table_label][hash_value])
+        active_set = list(self._hash_tables[args][hash_value])
         self.mask[active_set] =  True
         return mask
 
