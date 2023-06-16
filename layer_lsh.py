@@ -50,7 +50,7 @@ class LayerLSH(Layer):
 
         mask = np.zeros(y.shape, dtype=bool)
         for i in range(self._table_num):
-            hash_vectors = np.dot(X, self._projections[i].T)
+            hash_vectors = np.dot(X, self._projections[i].T) > 0
             mask = np.apply_along_axis(self.__binary_vector_by_hash_vector, axis=1, arr=hash_vectors, args=i) | mask
 
         return y*mask
@@ -63,9 +63,9 @@ class LayerLSH(Layer):
     
     def __binary_vector_by_hash_vector(self, vector, args):
         mask = np.zeros(self._out_dim, dtype=bool)
-        hash_value = self.__binary_vector_by_hash_vector(vector)
+        hash_value = self.__binary_vector_to_integer(vector)
         active_set = list(self._hash_tables[args][hash_value])
-        self.mask[active_set] =  True
+        mask[active_set] =  True
         return mask
 
     def __constructHashTable(self):
