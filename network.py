@@ -15,15 +15,13 @@ class Network:
         self.__n = 1 if(len(self.__layers) == 1) else self.__n+1
 
     # A forward and backward cycle
-    def __fit(self, x, y) -> list:
+    def __fit(self, x, y) -> float:
         # Forwardpropogation
         for l in self.__layers:
             x = l.forwardPropagation(x)
 
         y_hat = x
-        mse = MeanSquaredError()
         metrics = CategoricalAccuracy()
-        loss = mse(y, y_hat).numpy()
         metrics.update_state(y, y_hat)
         accuracy = metrics.result().numpy()
 
@@ -32,7 +30,7 @@ class Network:
         # backwardpropogation
         for l in range(self.__n-1, -1, -1):
             dy = self.__layers[l].backwardPropagation(dy)
-        return([loss, accuracy])
+        return(accuracy)
 
     def fit(self, X: np.ndarray, Y: np.ndarray, learning_rate: float, epochs: int, progress: bool = True) -> list:
         X = X.astype(np.float64)
@@ -51,13 +49,13 @@ class Network:
             for j in singleP:
                 
                 start_time = time.time()
-                [loss, accuracy] = self.__fit(X[[j]], Y[[j]])
+                accuracy = self.__fit(X[[j]], Y[[j]])
                 end_time = time.time()
                 rm = rm + end_time - start_time
 
                 cm = (cm * j+accuracy)/(j+1)
                 singleP.set_description("Epoch %2d" % (i+1))
-                singleP.set_postfix_str("Accuracy: %.4f, Loss: %.4f;" % (round(cm, 4), round(loss, 4)))
+                singleP.set_postfix_str("Accuracy: %.4f;" % (round(cm, 4)))
 
             epoch_accuracy[i] = cm
             epoch_time[i] = rm

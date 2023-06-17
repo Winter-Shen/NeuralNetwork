@@ -16,8 +16,8 @@ class LayerLSH(Layer):
         self._x = x
         active_set = set()
         for i in range(self._table_num):
-            hash_vector = np.dot(x, self._projections[i].T) > 0
-            hash_value = self.__binary_vector_to_integer(hash_vector)[0]
+            hash_vector = (np.dot(x, self._projections[i].T) > 0)[0]
+            hash_value = self.__binary_vector_to_integer(hash_vector)
             active_set = self._hash_tables[i][hash_value] | active_set
         active_set_idx = list(active_set)
 
@@ -76,7 +76,9 @@ class LayerLSH(Layer):
             projection = np.random.randn(self._function_num, self._in_dim)
             hash_vectors = np.dot(projection, self._weight) > 0
             hash_values = np.apply_along_axis(self.__binary_vector_to_integer, axis=0, arr=hash_vectors)
+            
             hash_table = [set(np.where(hash_values == values)[0]) for values in self._hash_range]
+            
 
             self._hash_values[i] = hash_values
             self._hash_tables.append(hash_table)
