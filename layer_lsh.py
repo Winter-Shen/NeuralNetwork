@@ -1,10 +1,13 @@
 from layer import Layer
+from typing import Union
 import numpy as np
 
 class LayerLSH(Layer):
-    def __init__(self, in_dim: int, out_dim: int, function_num:int = 1, table_num:int = 1):
+    def __init__(self, in_dim: int, out_dim: int, function_num:int = 1, table_num:int = 1, previous:bool = False, next:bool = False):
         super().__init__(in_dim, out_dim)
 
+        self._previous = previous
+        self._next = next
         self._function_num = function_num
         self._table_num = table_num
         self._hash_range = range(2**function_num)
@@ -12,43 +15,73 @@ class LayerLSH(Layer):
 
 
     # Take input set x and return output set after forward propagation
-    def forwardPropagation(self, x: np.ndarray) -> np.ndarray:
-        self._x = x
-        active_set = set()
+    def forwardPropagation(self, x: Union[list, np.ndarray]) -> Union[list, np.ndarray]:
+        '''
+        if(self._previous):
+            self._x = x[0].copy()
+            self._x[0][x[1]] = 0
+            x = x[0]
+        else:
+            self._x = x
+        ''' 
+        #self._active_sets = [set() for i in range(self._table_num)]
+
+        #active_set = set()
+        '''
         for i in range(self._table_num):
             hash_vector = (np.dot(x, self._projections[i].T) > 0)[0]
-            hash_value = self.__binary_vector_to_integer(hash_vector)
-            active_set = self._hash_tables[i][hash_value] | active_set
-        active_set_idx = list(active_set)
+            hash_value = np.packbits(hash_vector, bitorder='little')[0]
+            self._active_sets[i] = self._hash_tables[i][hash_value]
+        '''
+            #s = self._hash_tables[i][hash_value]
+            #active_set = active_set | s
+            #self._active_sets[i] = list(s)
+        self._active_sets = [self._hash_tables[i][np.packbits((np.dot(x[0] if self._previous else x, self._projections[i].T) > 0)[0], bitorder='little')[0]] for i in range(self._table_num)]
+        
+        if(self._previous):
+            x[0][0][x[1]] = 0
+            self._x = x[0]
+        else:
+            self._x = x
 
-        self._mask = np.zeros(self._out_dim, dtype=bool)
-        self._mask[active_set_idx] = True
-        return np.dot(x, self._weight)*self._mask
+
+
+
+        self._mask = np.ones(self._out_dim, dtype=bool)
+        self._mask[list(set().union(*self._active_sets))] = False
+
+        y = np.dot(self._x, self._weight)
+        #y[0][self._mask] = 0
+
+        if(self._next):
+            return [y, self._mask]
+        else:
+            y[0][self._mask] = 0
+            return y
 
     # Take derivatives of output set and return derivatives of inputset set after backward propagation
     def backwardPropagation(self, dy: np.ndarray) -> np.ndarray:
-        dy = (dy*self._mask)
+        dy[0][self._mask] = 0
 
         dx = np.dot(dy, self._weight.T)
         dw = np.dot(self._x.T, dy)
         self._weight = self._weight - self._learning_rate * dw
 
-        a = self._weight[:,self._mask]
-        b = sum(self._mask)
-
         for i in range(self._table_num):
-            c = np.dot(self._projections[i], self._weight[:,self._mask]) > 0
-            d = sum(c)
+            active_set_idx  = list(self._active_sets[i])
 
-            hash_vectors = np.dot(self._projections[i], self._weight) > 0
-            hash_values = np.apply_along_axis(self.__binary_vector_to_integer, axis=0, arr=hash_vectors)
+            if(len(active_set_idx) == 0):
+                continue
 
-            for idx, value in enumerate(hash_values):
-                old_hash_value = self._hash_values[i][idx]
-                self._hash_tables[i][old_hash_value].remove(idx)
-                self._hash_tables[i][value].add(idx)
-            self._hash_values[i] = hash_values
-
+            hash_vectors = np.dot(self._projections[i], self._weight[:,active_set_idx]) > 0
+            hash_values = np.packbits(hash_vectors, axis=0, bitorder='little')[0]
+            old_hash_values = self._hash_values[i][active_set_idx]
+            
+            for j in range(len(active_set_idx)):
+                self._hash_tables[i][old_hash_values[j]].remove(active_set_idx[j])
+                self._hash_tables[i][hash_values[j]].add(active_set_idx[j])
+            
+            self._hash_values[i][active_set_idx] = hash_values
         return dx
 
     def predict(self, X:np.ndarray) -> np.ndarray:
@@ -81,7 +114,8 @@ class LayerLSH(Layer):
         for i in range(self._table_num):
             projection = np.random.randn(self._function_num, self._in_dim)
             hash_vectors = np.dot(projection, self._weight) > 0
-            hash_values = np.apply_along_axis(self.__binary_vector_to_integer, axis=0, arr=hash_vectors)
+            #hash_values = np.apply_along_axis(self.__binary_vector_to_integer, axis=0, arr=hash_vectors)
+            hash_values = np.packbits(hash_vectors, axis=0, bitorder='little')[0]
             
             hash_table = [set(np.where(hash_values == values)[0]) for values in self._hash_range]
             

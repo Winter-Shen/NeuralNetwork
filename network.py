@@ -19,25 +19,25 @@ class Network:
         # Forwardpropogation
         for l in self.__layers:
             x = l.forwardPropagation(x)
-
         y_hat = x
-        metrics = CategoricalAccuracy()
-        metrics.update_state(y, y_hat)
-        accuracy = metrics.result().numpy()
-
         r = y_hat-y
         dy = 2*r/(r.shape[1])
         # backwardpropogation
         for l in range(self.__n-1, -1, -1):
             dy = self.__layers[l].backwardPropagation(dy)
-        return(accuracy)
+        return(y_hat)
 
     def fit(self, X: np.ndarray, Y: np.ndarray, learning_rate: float, epochs: int, progress: bool = True) -> list:
         X = X.astype(np.float64)
         Y = Y.astype(np.float64)
 
+        metrics = CategoricalAccuracy()
+
         for layer in self.__layers:
             layer.trainingSettings(learning_rate)
+
+        #ft = np.empty((epochs, X.shape[0]))
+        #bt = np.empty((epochs, X.shape[0]))
 
         epoch_accuracy = [0 for i in range(epochs)]
         epoch_time = [0 for i in range(epochs)]
@@ -49,16 +49,24 @@ class Network:
             for j in singleP:
                 
                 start_time = time.time()
-                accuracy = self.__fit(X[[j]], Y[[j]])
+                y_hat = self.__fit(X[[j]], Y[[j]])
                 end_time = time.time()
+
+                #ft[i][j] = f_time
+                #bt[i][j] = b_time
+
                 rm = rm + end_time - start_time
 
-                cm = (cm * j+accuracy)/(j+1)
-                singleP.set_description("Epoch %2d" % (i+1))
-                singleP.set_postfix_str("Accuracy: %.4f;" % (round(cm, 4)))
+                metrics.update_state(Y[[j]], y_hat)
+                if(progress):
+                    cm = metrics.result().numpy()
 
+                singleP.set_description("Epoch %2d" % (i+1))
+                singleP.set_postfix_str("Accuracy: %.3f;" % (round(cm, 4)))
+            
             epoch_accuracy[i] = cm
             epoch_time[i] = rm
+            metrics.reset_state()
         return [epoch_accuracy, epoch_time]
 
     def predict(self, X: np.ndarray) -> np.ndarray:
