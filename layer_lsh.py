@@ -33,7 +33,13 @@ class LayerLSH(Layer):
         dw = np.dot(self._x.T, dy)
         self._weight = self._weight - self._learning_rate * dw
 
+        a = self._weight[:,self._mask]
+        b = sum(self._mask)
+
         for i in range(self._table_num):
+            c = np.dot(self._projections[i], self._weight[:,self._mask]) > 0
+            d = sum(c)
+
             hash_vectors = np.dot(self._projections[i], self._weight) > 0
             hash_values = np.apply_along_axis(self.__binary_vector_to_integer, axis=0, arr=hash_vectors)
 
