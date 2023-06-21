@@ -60,13 +60,18 @@ class Network:
                 metrics.update_state(Y[[j]], y_hat)
                 if(progress):
                     cm = metrics.result().numpy()
-
-                singleP.set_description("Epoch %2d" % (i+1))
-                singleP.set_postfix_str("Accuracy: %.3f;" % (round(cm, 4)))
+                    singleP.set_description("Epoch %2d" % (i+1))
+                    singleP.set_postfix_str("Accuracy: %.3f;" % (round(cm, 4)))                
             
+            if(not progress):
+                print(f"epoch {i + 1} has completed")
+                cm = metrics.result().numpy()
+
             epoch_accuracy[i] = cm
             epoch_time[i] = rm
             metrics.reset_state()
+        self.epoch_accuracy = epoch_accuracy
+        self.epoch_time = epoch_time
         return [epoch_accuracy, epoch_time]
 
     def predict(self, X: np.ndarray) -> np.ndarray:
