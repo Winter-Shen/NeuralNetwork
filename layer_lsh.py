@@ -16,26 +16,7 @@ class LayerLSH(Layer):
 
     # Take input set x and return output set after forward propagation
     def forwardPropagation(self, x: Union[list, np.ndarray]) -> Union[list, np.ndarray]:
-        '''
-        if(self._previous):
-            self._x = x[0].copy()
-            self._x[0][x[1]] = 0
-            x = x[0]
-        else:
-            self._x = x
-        ''' 
-        #self._active_sets = [set() for i in range(self._table_num)]
 
-        #active_set = set()
-        '''
-        for i in range(self._table_num):
-            hash_vector = (np.dot(x, self._projections[i].T) > 0)[0]
-            hash_value = np.packbits(hash_vector, bitorder='little')[0]
-            self._active_sets[i] = self._hash_tables[i][hash_value]
-        '''
-            #s = self._hash_tables[i][hash_value]
-            #active_set = active_set | s
-            #self._active_sets[i] = list(s)
         self._active_sets = [self._hash_tables[i][np.packbits((np.dot(x[0] if self._previous else x, self._projections[i].T) > 0)[0], bitorder='little')[0]] for i in range(self._table_num)]
         
         if(self._previous):

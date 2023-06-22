@@ -11,14 +11,17 @@ class LayerDropout(Layer):
     def forwardPropagation(self, x: np.ndarray) -> np.ndarray:
         self._x = x
         self._mask = np.random.rand(self._out_dim) > self._dropout_probability
-        return np.dot(x, self._weight)*self._mask
+        y = np.zeros((1,self._out_dim), dtype=np.float64)
+        y[:,self._mask] = np.dot(x, self._weight[:,self._mask])
+        #return np.dot(x, self._weight)*self._mask
+        return y
 
 
     # Take derivatives of output set and return derivatives of inputset set after backward propagation
     def backwardPropagation(self, dy: np.ndarray) -> np.ndarray:
-        dy = (dy*self._mask)
+        
 
-        dx = np.dot(dy, self._weight.T)
+        dx = np.dot(dy[:,self._mask], self._weight[:,self._mask].T)
         dw = np.dot(self._x.T, dy)
-        self._weight = self._weight - self._learning_rate * dw
+        self._weight[:,self._mask] = self._weight[:,self._mask] - self._learning_rate * dw
         return dx
