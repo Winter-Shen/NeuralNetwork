@@ -36,9 +36,6 @@ class Network:
         for layer in self.__layers:
             layer.trainingSettings(learning_rate)
 
-        #ft = np.empty((epochs, X.shape[0]))
-        #bt = np.empty((epochs, X.shape[0]))
-
         epoch_accuracy = [0 for i in range(epochs)]
         epoch_time = [0 for i in range(epochs)]
         for i in range(epochs):
@@ -51,9 +48,6 @@ class Network:
                 start_time = time.time()
                 y_hat = self.__fit(X[[j]], Y[[j]])
                 end_time = time.time()
-
-                #ft[i][j] = f_time
-                #bt[i][j] = b_time
 
                 rm = rm + end_time - start_time
 

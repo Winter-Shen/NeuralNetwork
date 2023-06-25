@@ -23,5 +23,5 @@ class LayerDropout(Layer):
 
         dx = np.dot(dy[:,self._mask], self._weight[:,self._mask].T)
         dw = np.dot(self._x.T, dy)
-        self._weight[:,self._mask] = self._weight[:,self._mask] - self._learning_rate * dw
+        self._weight[:,self._mask] = self._weight[:,self._mask] - self._learning_rate * dw[:,self._mask]
         return dx
